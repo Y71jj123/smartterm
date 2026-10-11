@@ -1,0 +1,23 @@
+# 构建产物
+build/
+bin/
+*.o
+*.a
+*.so
+
+# 交叉编译 / 本地编译出的二进制
+smart_center_bin_arm64
+pvz_bin_arm64
+server/chat_server
+server/chat_server_arm
+
+# LVGL 构建中间物（源码保留）
+lvgl/**/*.o
+
+# 编辑器 / 系统
+.DS_Store
+*.swp
+.vscode/
+
+# 本地私有材料（不推 GitHub，桌面另存）
+README_详细版.md
