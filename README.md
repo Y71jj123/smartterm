@@ -8,7 +8,7 @@
 
 **一句话**：一个跑在 ARM 开发板上的嵌入式智能终端，用户登录后可在同一块 1024×600 触摸屏上使用「网络聊天 / 植物大战僵尸 / 2048 / 音乐视频」四大功能，全部模块共享同一套 LVGL 图形框架与 TCP 通信层。
 
-本人在从零独立搭建：用 **C + LVGL 9** 完成全部图形界面与业务逻辑，用 **TCP Socket + cJSON + pthread** 实现网络聊天与登录鉴权，用 **fork + mplayer -slave + 命名管道** 实现音乐/视频播放，最终通过 **CMake + aarch64 交叉编译** 部署到 **RK3568（ARM64）** 开发板，在 1024×600 触摸屏上实际运行。
+本人从零独立设计并实现：用 **C + LVGL 9** 完成全部图形界面与业务逻辑，用 **TCP Socket + cJSON + pthread** 实现网络聊天与登录鉴权，用 **fork + mplayer -slave + 命名管道** 实现音乐/视频播放，最终通过 **CMake + aarch64 交叉编译** 部署到 **RK3568（ARM64）** 开发板，在 1024×600 触摸屏上实际运行。
 
 **界面预览**
 
@@ -32,7 +32,7 @@
 | --- | --- |
 | 编程语言 | C（C99）、少量 C++（CMake 工程） |
 | GUI 框架 | LVGL 9（轻量级开源嵌入式图形库） |
-| 硬件平台 | RK3568 开发板，四核 Cortex-A55，1024×600 电容触摸屏 |
+| 硬件平台 | Rockchip RK3568 开发板（ARM64），四核 Cortex-A55，1024×600 电容触摸屏 |
 | 操作系统 | Linux（framebuffer `/dev/fb0` 显示 + evdev `/dev/input/eventX` 触摸输入） |
 | 网络通信 | TCP Socket、cJSON 协议封装、pthread 多线程并发 |
 | 进程与并发 | fork 创建子进程、waitpid 回收、命名管道（FIFO）进程间通信 |
@@ -81,7 +81,6 @@ smartterm/
 ├── Makefile                # 备选构建
 ├── main.c                  # 入口：fbdev + evdev 初始化、主循环（music/video 时暂停 LVGL 刷新）
 ├── lv_conf.h               # LVGL 配置（含 A: 盘符映射板子根 /）
-├── lv_my_font.h         # 自定义字体
 ├── mouse_cursor_icon.c     # 鼠标光标图标
 ├── mysrc/
 │   ├── inc/                # 模块头文件（ui_login/ui_home/net_chat/game_pvz/game_2048/app_music/game_menu/cJSON）

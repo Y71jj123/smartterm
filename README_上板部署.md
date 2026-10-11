@@ -80,7 +80,7 @@ ls -l /jing/main      # 应约 2321240 字节
 
 ## 4. 关掉出厂 demo 自启（重要）
 
-板子开机自动执行 `/etc/init.d/S50launch_demo`（出厂测试程序，RTC/LED/Buzzer
+板子开机自动执行 `/etc/init.d/S50launch_demo`（厂商出厂测试程序，RTC/LED/Buzzer
 测试界面）。它一直占用 framebuffer，会导致自己程序画面被覆盖。
 
 ```sh
