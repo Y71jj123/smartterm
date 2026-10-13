@@ -36,6 +36,7 @@ static void make_card(lv_obj_t *parent, const char *icon, const char *name,
     lv_obj_set_style_border_width(card, 0, 0);
     lv_obj_set_style_shadow_width(card, 40, 0);
     lv_obj_set_style_shadow_opa(card, LV_OPA_30, 0);
+    lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);   /* 卡片不滚动，避免吞点击 */
     lv_obj_add_event_cb(card, cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *ic = lv_label_create(card);
@@ -57,6 +58,7 @@ static void make_card(lv_obj_t *parent, const char *icon, const char *name,
 void ui_home_show(void)
 {
     lv_obj_clean(lv_screen_active());
+    lv_obj_clear_flag(lv_screen_active(), LV_OBJ_FLAG_SCROLLABLE);   /* 禁止整屏滚动 */
     lv_refr_now(NULL);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x16222E), 0);
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_COVER, 0);
@@ -94,6 +96,7 @@ void ui_home_show(void)
     lv_obj_set_style_pad_column(row, 24, 0);
     lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(row, 0, 0);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 
     make_card(row, LV_SYMBOL_EDIT,    "Chat",  "tcp msg",  lv_color_hex(0x2C6E8F), chat_btn_cb);
     make_card(row, LV_SYMBOL_IMAGE,   "Game",  "pvz fun",  lv_color_hex(0x3D7A3D), game_btn_cb);

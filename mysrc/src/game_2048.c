@@ -204,6 +204,7 @@ static void show_overlay(const char *title)
     lv_obj_set_style_bg_color(g_overlay, lv_color_hex(0x101418), 0);
     lv_obj_set_style_bg_opa(g_overlay, LV_OPA_80, 0);
     lv_obj_set_style_border_width(g_overlay, 0, 0);
+    lv_obj_clear_flag(g_overlay, LV_OBJ_FLAG_SCROLLABLE);   /* 遮罩不滚动 */
 
     lv_obj_t *t = lv_label_create(g_overlay);
     lv_label_set_text(t, title);
@@ -238,6 +239,35 @@ static void restart_cb(lv_event_t *e)
  * -------------------------------------------------------------------- */
 #define SWIPE_MIN 30   /* 小于该位移视为点击，不算滑动 */
 
+/* 已识别过一次滑动就置位，避免一次手势被 PRESSING 反复触发 */
+static bool g_swipe_done = false;
+
+/* 执行一次滑动：算方向 -> move -> 有变化则补数、刷新、判定胜负 */
+static void do_swipe(int dx, int dy)
+{
+    int before[N][N];
+    memcpy(before, board, sizeof(before));
+
+    if (abs(dx) > abs(dy))
+        move(dx > 0 ? DIR_RIGHT : DIR_LEFT);
+    else
+        move(dy > 0 ? DIR_DOWN : DIR_UP);
+
+    if (!board_equal(before, board)) {
+        spawn();
+        refresh_board();
+        if (has_won())
+            show_overlay("YOU WIN !");
+        else if (!can_move())
+            show_overlay("GAME OVER");
+    }
+}
+
+/* 手势回调：
+ *   关键点——棋盘容器必须清掉 SCROLLABLE 标志（见 game_2048() 入口），
+ *   否则 LVGL 会把滑动当成"滚动棋盘"并抢走 press，导致手势收不到。
+ *   这里在 PRESSING 阶段就判定方向（不依赖 RELEASED 一定送达），
+ *   更抗触摸屏抖动 / press-lost。 */
 static void board_event_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
@@ -245,33 +275,33 @@ static void board_event_cb(lv_event_t *e)
     lv_point_t pt;
 
     if (code == LV_EVENT_PRESSED) {
+        if (!indev) return;
         lv_indev_get_point(indev, &pt);
         g_start_pt = pt;
         g_pressed = true;
-    } else if (code == LV_EVENT_RELEASED && g_pressed) {
+        g_swipe_done = false;
+    } else if (code == LV_EVENT_PRESSING) {
+        if (!indev || !g_pressed || g_swipe_done) return;
         lv_indev_get_point(indev, &pt);
-        g_pressed = false;
-
         int dx = pt.x - g_start_pt.x;
         int dy = pt.y - g_start_pt.y;
-        if (abs(dx) < SWIPE_MIN && abs(dy) < SWIPE_MIN) return;  /* 点击，忽略 */
-
-        int before[N][N];
-        memcpy(before, board, sizeof(before));
-
-        if (abs(dx) > abs(dy))
-            move(dx > 0 ? DIR_RIGHT : DIR_LEFT);
-        else
-            move(dy > 0 ? DIR_DOWN : DIR_UP);
-
-        if (!board_equal(before, board)) {
-            spawn();
-            refresh_board();
-            if (has_won())
-                show_overlay("YOU WIN !");
-            else if (!can_move())
-                show_overlay("GAME OVER");
+        if (abs(dx) >= SWIPE_MIN || abs(dy) >= SWIPE_MIN) {
+            do_swipe(dx, dy);
+            g_swipe_done = true;      /* 一次手势只走一格 */
         }
+    } else if (code == LV_EVENT_RELEASED) {
+        if (indev && g_pressed && !g_swipe_done) {
+            lv_indev_get_point(indev, &pt);
+            int dx = pt.x - g_start_pt.x;
+            int dy = pt.y - g_start_pt.y;
+            if (abs(dx) >= SWIPE_MIN || abs(dy) >= SWIPE_MIN)
+                do_swipe(dx, dy);
+        }
+        g_pressed = false;
+        g_swipe_done = false;
+    } else if (code == LV_EVENT_PRESS_LOST) {
+        g_pressed = false;
+        g_swipe_done = false;
     }
 }
 
@@ -293,6 +323,7 @@ void game_2048(void)
     srand((unsigned)time(NULL));
 
     lv_obj_clean(lv_screen_active());
+    lv_obj_clear_flag(lv_screen_active(), LV_OBJ_FLAG_SCROLLABLE);  /* 禁止整屏滚动 */
     lv_refr_now(NULL);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x0F141A), 0);
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_COVER, 0);
@@ -333,20 +364,27 @@ void game_2048(void)
     lv_obj_set_style_border_width(board_obj, 0, 0);
     lv_obj_set_style_pad_all(board_obj, pad, 0);
     lv_obj_add_flag(board_obj, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(board_obj, board_event_cb, LV_EVENT_PRESSED, NULL);
+    /* 核心修复：清除 SCROLLABLE，否则滑动会被 LVGL 当成"滚动棋盘"，
+     * 并抢走 press（PRESS_LOST），导致手势回调收不到、方块不动只有画面平移 */
+    lv_obj_clear_flag(board_obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(board_obj, board_event_cb, LV_EVENT_PRESSED,  NULL);
+    lv_obj_add_event_cb(board_obj, board_event_cb, LV_EVENT_PRESSING, NULL);
     lv_obj_add_event_cb(board_obj, board_event_cb, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(board_obj, board_event_cb, LV_EVENT_PRESS_LOST, NULL);
 
     /* 格子（底板 + 文字），用绝对坐标排布 */
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            int x = pad + j * (cell + gap);
-            int y = pad + i * (cell + gap);
+            int x = j * (cell + gap);   /* 相对 board 的 content area 定位，不要再加 pad，否则整体偏移并溢出 */
+            int y = i * (cell + gap);
             lv_obj_t *cell_obj = lv_obj_create(board_obj);
             lv_obj_set_size(cell_obj, cell, cell);
             lv_obj_set_pos(cell_obj, x, y);
             lv_obj_set_style_radius(cell_obj, 8, 0);
             lv_obj_set_style_border_width(cell_obj, 0, 0);
             lv_obj_set_style_bg_color(cell_obj, lv_color_hex(0x2E3B4E), 0);
+            lv_obj_clear_flag(cell_obj, LV_OBJ_FLAG_SCROLLABLE);   /* 格子不滚动 */
+            lv_obj_clear_flag(cell_obj, LV_OBJ_FLAG_CLICKABLE);    /* 格子不抢手势，交给 board 统一处理 */
 
             lv_obj_t *lab = lv_label_create(cell_obj);
             lv_obj_set_style_text_font(lab, &lv_font_montserrat_36, 0);

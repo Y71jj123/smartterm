@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <signal.h>
 
 #define FIFO_PATH   "/tmp/smart_music.fifo"
 #define MUSIC_DIR_1 "/mnt/usb"     /* 优先扫 U 盘挂载目录 */
@@ -31,6 +32,12 @@ static int   g_cur = -1;               /* 当前播放第几首 */
 static int  g_fifo_fd = -1;            /* 有名管道 fd（写命令用） */
 static pid_t g_player_pid = -1;        /* mplayer 子进程 */
 static bool g_video_active = false;    /* 当前播放的是视频(mp4)？是则暂停 LVGL 刷新 */
+static uint32_t g_video_start = 0;     /* 视频开始播放的 tick，供看门狗判断是否卡死 */
+
+/* 单个视频最长播放上限：超过就强制停。原因——视频播放期间主循环会跳过
+ * lv_timer_handler()，若 mplayer 卡死（fbdev2 被占/文件损坏）界面会永久冻结、
+ * 只能 Ctrl+C。看门狗保证最坏情况下也能自动恢复界面。 */
+#define VIDEO_MAX_MS (10UL * 60UL * 1000UL)   /* 10 分钟 */
 
 static lv_obj_t *song_list;
 static lv_obj_t *now_lbl;              /* 正在播放提示 */
@@ -47,12 +54,30 @@ static void mplayer_cmd(const char *cmd)
     }
 }
 
-/* 停掉当前 mplayer：写 quit + waitpid 回收 */
+/* 停掉当前 mplayer：写 quit + 回收；若它不响应则强制 SIGKILL。
+ * 注意：绝不能用 waitpid(pid, NULL, 0) 无限阻塞——mplayer 若不响应 fifo 的
+ * quit（打不开 fbdev2 / 卡在启动等），会让整个 LVGL 主线程冻结，
+ * 表现就是"所有按钮都点不动，只能 Ctrl+C"。 */
 static void mplayer_stop(void)
 {
     if (g_player_pid > 0) {
-        mplayer_cmd("quit");
-        waitpid(g_player_pid, NULL, 0);   /* 回收，避免僵尸进程 */
+        mplayer_cmd("quit");                 /* 先礼：请它自己退 */
+        int st = 0, reaped = 0;
+        for (int i = 0; i < 30; i++) {       /* 最多等 ~300ms */
+            if (waitpid(g_player_pid, &st, WNOHANG) == g_player_pid) { reaped = 1; break; }
+            usleep(10000);
+        }
+        if (!reaped) {                       /* 后兵：强杀，保证 UI 不卡死 */
+            printf("[MUSIC] mplayer 未响应 quit，SIGKILL pid=%d\n", (int)g_player_pid);
+            fflush(stdout);
+            kill(g_player_pid, SIGKILL);
+            /* 有界回收：最多再等 ~1s。D 态（卡在 fb ioctl）进程连 SIGKILL 都杀不掉，
+             * 此时宁可留个僵尸，也绝不让主线程永久阻塞（那会让整个 UI 冻死）。 */
+            for (int i = 0; i < 100; i++) {
+                if (waitpid(g_player_pid, &st, WNOHANG) == g_player_pid) break;
+                usleep(10000);
+            }
+        }
         g_player_pid = -1;
     }
     if (g_fifo_fd >= 0) {
@@ -60,6 +85,7 @@ static void mplayer_stop(void)
         g_fifo_fd = -1;
     }
     g_video_active = false;
+    g_video_start = 0;
     /* mplayer 用 fbdev 输出视频后会占住屏幕，退出时强制 LVGL 重绘，恢复界面 */
     lv_obj_invalidate(lv_screen_active());
     lv_refr_now(NULL);
@@ -79,8 +105,19 @@ bool music_video_active(void)
     if (r == g_player_pid) {             /* 视频播完，mplayer 已自行退出 */
         g_player_pid = -1;
         g_video_active = false;
+        g_video_start = 0;
+        /* 收尾：关 fifo、复位当前曲目。否则之后点 play/pause 会往无读端的
+         * fifo 写命令，静默失效 */
+        if (g_fifo_fd >= 0) { close(g_fifo_fd); g_fifo_fd = -1; }
+        g_cur = -1;
         lv_obj_invalidate(lv_screen_active());
         lv_refr_now(NULL);
+        return false;
+    }
+    /* 看门狗：视频卡死超过上限则强制停止并恢复界面，避免主循环永远跳过 LVGL 刷新 */
+    if (g_video_start && lv_tick_elaps(g_video_start) > VIDEO_MAX_MS) {
+        printf("[MUSIC] video watchdog timeout, force stop\n"); fflush(stdout);
+        mplayer_stop();
         return false;
     }
     return true;
@@ -131,6 +168,7 @@ static void mplayer_play(int idx)
     /* O_RDWR 打开 fifo：即使 mplayer 还没 open 也不会阻塞 */
     g_fifo_fd = open(FIFO_PATH, O_RDWR);
     g_cur = idx;
+    g_video_start = g_video_active ? lv_tick_get() : 0;   /* 视频开始计时，供看门狗 */
 
     char buf[128];
     const char *base = strrchr(g_songs[idx], '/');
@@ -175,6 +213,7 @@ static void song_click_cb(lv_event_t *e)
 {
     lv_obj_t *btn = lv_event_get_target(e);
     int idx = (int)(intptr_t)lv_obj_get_user_data(btn);
+    printf("[MUSIC] song clicked idx=%d\n", idx); fflush(stdout);
     mplayer_play(idx);
 }
 
@@ -183,6 +222,7 @@ static void ctrl_click_cb(lv_event_t *e)
     lv_obj_t *btn = lv_event_get_target(e);
     lv_obj_t *lbl = lv_obj_get_child(btn, 0);
     const char *txt = lv_label_get_text(lbl);
+    printf("[MUSIC] ctrl clicked: %s\n", txt); fflush(stdout);
 
     if      (!strcmp(txt, "prev"))  mplayer_play(g_cur <= 0 ? g_song_cnt - 1 : g_cur - 1);
     else if (!strcmp(txt, "play"))  { if (g_cur < 0) mplayer_play(0); else mplayer_cmd("pause"); }  /* pause 命令在暂停时再发一次=继续 */
@@ -198,6 +238,7 @@ static void ctrl_click_cb(lv_event_t *e)
 static void back_cb(lv_event_t *e)   /* 返回主界面 */
 {
     (void)e;
+    printf("[MUSIC] BACK clicked -> ui_home_show\n"); fflush(stdout);
     music_app_close();
 }
 
@@ -205,6 +246,7 @@ static void back_cb(lv_event_t *e)   /* 返回主界面 */
 void music_app_open(void)
 {
     lv_obj_clean(lv_screen_active());
+    lv_obj_clear_flag(lv_screen_active(), LV_OBJ_FLAG_SCROLLABLE);   /* 禁止整屏滚动，防手势被吞 */
     lv_refr_now(NULL);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x1B2631), 0);
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_COVER, 0);
@@ -216,6 +258,8 @@ void music_app_open(void)
     lv_obj_set_style_bg_color(top, lv_color_hex(0x2C3E50), 0);
     lv_obj_set_style_border_width(top, 0, 0);
     lv_obj_set_style_radius(top, 0, 0);
+    lv_obj_set_style_pad_all(top, 0, 0);
+    lv_obj_clear_flag(top, LV_OBJ_FLAG_SCROLLABLE);                 /* 容器不滚动，避免吞点击 */
 
     lv_obj_t *title = lv_label_create(top);
     lv_label_set_text(title, "Music Player (mplayer)");
@@ -249,6 +293,7 @@ void music_app_open(void)
     lv_obj_set_style_bg_opa(ctrl_bar, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(ctrl_bar, 0, 0);
     lv_obj_set_style_pad_all(ctrl_bar, 0, 0);
+    lv_obj_clear_flag(ctrl_bar, LV_OBJ_FLAG_SCROLLABLE);            /* 容器不滚动，避免吞点击 */
     lv_obj_set_flex_flow(ctrl_bar, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(ctrl_bar, LV_FLEX_ALIGN_SPACE_EVENLY,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);

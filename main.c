@@ -1,5 +1,6 @@
 #include "lvgl/lvgl.h"
 #include "lvgl/demos/lv_demos.h"
+#include "lvgl/src/indev/lv_indev_private.h"   /* 为直接设置 indev->scroll_limit */
 #include <unistd.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -19,6 +20,12 @@ int main(void)
     lv_linux_fbdev_set_file(disp, "/dev/fb0");
 
     lv_indev_t * indev = lv_evdev_create(LV_INDEV_TYPE_POINTER, "/dev/input/event6");
+
+    /* 触摸屏容错：默认 scroll_limit 只有 10px，电容屏抖动/手指微移常超过它，
+     * 会把"点击"误判成"滚动"，导致按钮 CLICKED 不触发（点了没反应）。
+     * 放宽到 25px：轻微抖动仍算点击，真正大距离拖动才当滚动
+     * （不宜过大，否则可滚动列表/聊天页的滚动起步会变迟钝）。 */
+    indev->scroll_limit = 25;
 
     srand(time(NULL));
 
