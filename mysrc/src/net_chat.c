@@ -7,6 +7,7 @@
 #include "lvgl/lvgl.h"
 #include "mysrc/inc/net_chat.h"
 #include "mysrc/inc/ui_home.h"
+#include "mysrc/inc/ui_kb.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -302,6 +303,7 @@ static void back_cb(lv_event_t *e)         /* 返回主界面 */
 void chat_app_open(void)
 {
     lv_obj_clean(lv_screen_active());
+    lv_obj_clear_flag(lv_screen_active(), LV_OBJ_FLAG_SCROLLABLE);   /* 禁止整屏滚动，防手势被吞 */
     lv_refr_now(NULL);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x1B2631), 0);
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_COVER, 0);
@@ -327,19 +329,19 @@ void chat_app_open(void)
     lv_obj_center(bl);
     lv_obj_add_event_cb(back, back_cb, LV_EVENT_CLICKED, NULL);
 
-    /* 左侧在线用户列表（上半区压缩，给底部键盘留位置） */
+    /* 左侧在线用户列表（上半区压缩，给底部 5 行键盘让位置） */
     user_list = lv_list_create(lv_screen_active());
-    lv_obj_set_size(user_list, 240, 264);
+    lv_obj_set_size(user_list, 240, 230);
     lv_obj_set_pos(user_list, 10, 62);
 
     target_lbl = lv_label_create(lv_screen_active());
     lv_label_set_text(target_lbl, "PM target: none");
     lv_obj_set_style_text_color(target_lbl, lv_color_hex(0xF0E68C), 0);
-    lv_obj_set_pos(target_lbl, 10, 330);
+    lv_obj_set_pos(target_lbl, 10, 296);
 
     /* 右侧消息区（可滚动容器，内部是竖排 label） */
     msg_area = lv_obj_create(lv_screen_active());
-    lv_obj_set_size(msg_area, 750, 264);
+    lv_obj_set_size(msg_area, 750, 230);
     lv_obj_set_pos(msg_area, 260, 62);
     lv_obj_set_flex_flow(msg_area, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(msg_area, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -348,32 +350,34 @@ void chat_app_open(void)
 
     /* 底部输入行 */
     input_ta = lv_textarea_create(lv_screen_active());
-    lv_obj_set_size(input_ta, 640, 54);
-    lv_obj_set_pos(input_ta, 260, 336);
+    lv_obj_set_size(input_ta, 640, 50);
+    lv_obj_set_pos(input_ta, 260, 316);
     /* 点击输入框 -> 键盘绑到它（CLICKED 比 FOCUSED 可靠） */
     lv_obj_add_event_cb(input_ta, ta_click_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *pm_btn = lv_btn_create(lv_screen_active());
-    lv_obj_set_size(pm_btn, 90, 54);
-    lv_obj_set_pos(pm_btn, 910, 336);
+    lv_obj_set_size(pm_btn, 90, 50);
+    lv_obj_set_pos(pm_btn, 910, 316);
     lv_obj_t *pl = lv_label_create(pm_btn);
     lv_label_set_text(pl, "PM");
     lv_obj_center(pl);
     lv_obj_add_event_cb(pm_btn, send_pm_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *gr_btn = lv_btn_create(lv_screen_active());
-    lv_obj_set_size(gr_btn, 240, 54);
-    lv_obj_set_pos(gr_btn, 10, 336);
+    lv_obj_set_size(gr_btn, 240, 50);
+    lv_obj_set_pos(gr_btn, 10, 316);
     lv_obj_set_style_bg_color(gr_btn, lv_color_hex(0x1F6F43), 0);
     lv_obj_t *gl = lv_label_create(gr_btn);
     lv_label_set_text(gl, "GROUP SEND");
     lv_obj_center(gl);
     lv_obj_add_event_cb(gr_btn, send_group_cb, LV_EVENT_CLICKED, NULL);
 
-    /* 触摸键盘：常显（同登录页，避免板上点输入框弹不出键盘） */
+    /* 触摸键盘：常显（同登录页，避免板上点输入框弹不出键盘）；
+     * 高度 230 = 5 行 × 46px，布局见 ui_kb.c */
     kb = lv_keyboard_create(lv_screen_active());
-    lv_obj_set_size(kb, 1024, 200);
-    lv_obj_set_pos(kb, 0, 400);
+    lv_obj_set_size(kb, 1024, 230);
+    lv_obj_set_pos(kb, 0, 370);
+    smart_kb_apply(kb);                       /* 换成常驻数字行的常见布局 */
     lv_keyboard_set_textarea(kb, input_ta);   /* 默认绑到聊天输入框 */
 
     /* 进入即请求一次在线列表，并启动收包线程 */

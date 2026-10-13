@@ -6,6 +6,7 @@
 #include "mysrc/inc/ui_login.h"
 #include "mysrc/inc/net_chat.h"
 #include "mysrc/inc/ui_home.h"
+#include "mysrc/inc/ui_kb.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -154,7 +155,7 @@ static void reg_btn_cb(lv_event_t *e)    { (void)e; start_request(true); }
 void ui_login_show(void)
 {
     /* 版本标记：跑起来终端会打印这一行，用来确认板子上跑的是不是最新代码 */
-    printf("[UI] === login page BUILD v2 (keyboard always-on) ===\n");
+    printf("[UI] === login page BUILD v3 (QWERTY+number-row keyboard) ===\n");
     printf("[UI] screen resolution = %d x %d\n",
            (int)lv_display_get_horizontal_resolution(NULL),
            (int)lv_display_get_vertical_resolution(NULL));
@@ -171,28 +172,28 @@ void ui_login_show(void)
     lv_label_set_text(title, "Smart Terminal");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 12);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 8);
 
     lv_obj_t *sub = lv_label_create(lv_screen_active());
     /* 屏幕上可见的版本标记：看到这行说明跑的是新代码 */
-    lv_label_set_text(sub, "Chat | Game | Music    [ BUILD v2 - KB ON ]");
+    lv_label_set_text(sub, "Chat | Game | Music    [ BUILD v3 - QWERTY KB ]");
     lv_obj_set_style_text_color(sub, lv_color_hex(0x55DD88), 0);
-    lv_obj_align(sub, LV_ALIGN_TOP_MID, 0, 56);
+    lv_obj_align(sub, LV_ALIGN_TOP_MID, 0, 50);
 
-    /* 三行输入框 + 右侧标签（整体上移，给底部键盘让位） */
+    /* 三行输入框 + 右侧标签（整体上移，给底部 5 行键盘让位） */
     const struct { lv_obj_t **ta; const char *hint; bool is_pass; int y; } rows[] = {
-        { &ip_ta,   "Server", false, 96  },
-        { &name_ta, "User",   false, 162 },
-        { &pass_ta, "Pass",   true,  228 },
+        { &ip_ta,   "Server", false, 88  },
+        { &name_ta, "User",   false, 150 },
+        { &pass_ta, "Pass",   true,  212 },
     };
     for (int i = 0; i < 3; i++) {
         lv_obj_t *lbl = lv_label_create(lv_screen_active());
         lv_label_set_text(lbl, rows[i].hint);
         lv_obj_set_style_text_color(lbl, lv_color_hex(0xAABBCB), 0);
-        lv_obj_set_pos(lbl, 262, rows[i].y + 15);
+        lv_obj_set_pos(lbl, 262, rows[i].y + 18);
 
         lv_obj_t *ta = lv_textarea_create(lv_screen_active());
-        lv_obj_set_size(ta, 400, 56);
+        lv_obj_set_size(ta, 400, 54);
         lv_obj_set_pos(ta, 360, rows[i].y);
         lv_textarea_set_one_line(ta, true);
         lv_textarea_set_placeholder_text(ta, rows[i].hint);
@@ -205,8 +206,8 @@ void ui_login_show(void)
 
     /* 登录 / 注册 按钮 */
     lv_obj_t *login_btn = lv_btn_create(lv_screen_active());
-    lv_obj_set_size(login_btn, 190, 54);
-    lv_obj_set_pos(login_btn, 360, 296);
+    lv_obj_set_size(login_btn, 190, 52);
+    lv_obj_set_pos(login_btn, 360, 276);
     lv_obj_set_style_bg_color(login_btn, lv_color_hex(0x1F6F43), 0);
     lv_obj_t *ll = lv_label_create(login_btn);
     lv_label_set_text(ll, "LOGIN");
@@ -214,8 +215,8 @@ void ui_login_show(void)
     lv_obj_add_event_cb(login_btn, login_btn_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *reg_btn = lv_btn_create(lv_screen_active());
-    lv_obj_set_size(reg_btn, 190, 54);
-    lv_obj_set_pos(reg_btn, 570, 296);
+    lv_obj_set_size(reg_btn, 190, 52);
+    lv_obj_set_pos(reg_btn, 570, 276);
     lv_obj_set_style_bg_color(reg_btn, lv_color_hex(0x39586E), 0);
     lv_obj_t *rl = lv_label_create(reg_btn);
     lv_label_set_text(rl, "REGISTER");
@@ -226,12 +227,14 @@ void ui_login_show(void)
     status_lbl = lv_label_create(lv_screen_active());
     lv_label_set_text(status_lbl, "");
     lv_obj_set_style_text_color(status_lbl, lv_color_hex(0xE67E22), 0);
-    lv_obj_align(status_lbl, LV_ALIGN_TOP_MID, 0, 358);
+    lv_obj_align(status_lbl, LV_ALIGN_TOP_MID, 0, 336);
 
-    /* 触摸键盘：常显，贴屏幕底部 + 占满宽度（自适应分辨率） */
+    /* 触摸键盘：常显，贴屏幕底部 + 占满宽度（自适应分辨率）。
+     * 高度 230 = 5 行 × 46px，配合 ui_kb.c 的「QWERTY + 数字行」布局。 */
     kb = lv_keyboard_create(lv_screen_active());
-    lv_obj_set_size(kb, lv_pct(100), 200);
+    lv_obj_set_size(kb, lv_pct(100), 230);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
+    smart_kb_apply(kb);                                  /* 换成常驻数字行的常见布局 */
     lv_keyboard_set_textarea(kb, name_ta);               /* 默认绑到用户名输入框 */
     lv_obj_move_foreground(kb);                          /* 确保键盘在最上层，不被遮挡 */
     /* 关键修复：先强制算好布局，再整屏标脏+立即重绘，
