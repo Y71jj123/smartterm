@@ -160,6 +160,22 @@ ABC z x c v b n m _ , '        行4: 2 + 7×1 + 3×1
 
 ---
 
+## 3.6 界面中文化 + 中文字库（2026-10-15）
+
+- 界面文字**全部改为中文**；字库用**项目内 lvgl 自带的 Noto Sans SC**（思源黑体，SIL OFL 协议、可自由分发）
+  经 `lv_font_conv` 生成**子集**：14/16/20/28/32/36/48 共 7 档，落到 `mysrc/src/ui_font_cn_*.c`，
+  声明在 `mysrc/inc/ui_font.h`。
+- **只收「字符串字面量里出现过的非 ASCII 字符 + ASCII」**（注释里的字不算），7 档源码合计约 2.6MB。
+  ⚠️ 因此**新写一个没收录的汉字会显示成方块**（不报错、不崩溃，很难查）→ 改完界面文字要重跑
+  `python tools/gen_cn_font.py`。
+- 默认字体在 `main.c` 挂到根 screen：`lv_obj_set_style_text_font(lv_screen_active(), &ui_font_cn_20, 0)`，
+  子对象继承；各页面原有的 `lv_font_montserrat_*` 已统一换成 `ui_font_cn_*`。
+- ⚠️ **顺手修了一个隐患**：音乐页底部控制条的按钮原先靠 `strcmp(标签文字, "prev")` 判断命令，
+  标签一改中文就会**全部失配、一排按钮集体失灵** → 改成按钮 `user_data` 存下标、查 `k_ctrl_keys[]` 命令表，
+  显示文字与命令彻底解耦。
+
+---
+
 ## 4. 常用命令
 
 ```bash

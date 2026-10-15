@@ -1,4 +1,5 @@
 #include "lvgl/lvgl.h"
+#include "mysrc/inc/ui_font.h"
 #include "mysrc/inc/game_pvz.h"
 #include "mysrc/inc/game_menu.h"
 #include <stdio.h>
@@ -82,12 +83,12 @@ void game_menu(void)
     /* lv_obj_set_style_text_color：设置文字颜色 */
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFF078), 0);
     /* lv_obj_set_style_text_font：设置字体，lv_font_montserrat_48 是 LVGL 内置 48px 字体 */
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(title, &ui_font_cn_48, 0);
     /* lv_obj_set_style_text_align：设置文字对齐方式，居中 */
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_opa(title, LV_OPA_COVER, 0);
     /* lv_label_set_text：设置标签显示的文字内容 */
-    lv_label_set_text(title, "Plants vs. Zombies");
+    lv_label_set_text(title, "植物大战僵尸");
     lv_obj_set_pos(title, 0, 12);
     lv_obj_set_size(title, MENU_SCR_W, 64);
 
@@ -97,9 +98,9 @@ void game_menu(void)
      * ============================================================ */
     lv_obj_t *sub = lv_label_create(lv_screen_active());
     lv_obj_set_style_text_color(sub, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(sub, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(sub, &ui_font_cn_20, 0);
     lv_obj_set_style_text_align(sub, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(sub, "Classic Defense - ARM Board Demo");
+    lv_label_set_text(sub, "经典塔防 · 开发板演示");
     lv_obj_set_pos(sub, MENU_SCR_W / 2 - 200, 76);
     lv_obj_set_size(sub, 400, 24);
 
@@ -109,7 +110,7 @@ void game_menu(void)
      * ============================================================ */
     lv_obj_t *intro = lv_label_create(lv_screen_active());
     lv_obj_set_style_text_color(intro, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(intro, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(intro, &ui_font_cn_20, 0);
     lv_obj_set_style_text_align(intro, LV_TEXT_ALIGN_CENTER, 0);
     /* 文字中 \n 是换行符，标签会自动换行显示 */
     lv_label_set_text(intro,
@@ -153,9 +154,9 @@ void game_menu(void)
      * ============================================================ */
     lv_obj_t *btn_label = lv_label_create(btn);   /* 父对象 = btn，文字画在按钮上 */
     lv_obj_set_style_text_color(btn_label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_36, 0);
+    lv_obj_set_style_text_font(btn_label, &ui_font_cn_36, 0);
     lv_obj_set_style_text_align(btn_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(btn_label, "START GAME");
+    lv_label_set_text(btn_label, "开始游戏");
     lv_obj_set_pos(btn_label, 0, 0);
     lv_obj_set_size(btn_label, 320, 88);
     lv_obj_set_style_text_align(btn_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -166,7 +167,7 @@ void game_menu(void)
      * ============================================================ */
     lv_obj_t *foot = lv_label_create(lv_screen_active());
     lv_obj_set_style_text_color(foot, lv_color_hex(0xDDDDDD), 0);
-    lv_obj_set_style_text_font(foot, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(foot, &ui_font_cn_14, 0);
     lv_obj_set_style_text_align(foot, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(foot, "v1.0  |  /dev/fb0 1024x600 32bpp  |  /dev/input/event6  evdev");
     lv_obj_set_pos(foot, MENU_SCR_W / 2 - 220, MENU_SCR_H - 36);

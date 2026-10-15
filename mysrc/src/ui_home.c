@@ -3,6 +3,7 @@
  * + 退出登录。点击卡片进入对应模块，各模块退出时再调 ui_home_show() 回来。
  */
 #include "lvgl/lvgl.h"
+#include "mysrc/inc/ui_font.h"
 #include "mysrc/inc/ui_home.h"
 #include "mysrc/inc/ui_login.h"
 #include "mysrc/inc/net_chat.h"
@@ -41,12 +42,12 @@ static void make_card(lv_obj_t *parent, const char *icon, const char *name,
 
     lv_obj_t *ic = lv_label_create(card);
     lv_label_set_text(ic, icon);
-    lv_obj_set_style_text_font(ic, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_font(ic, &ui_font_cn_32, 0);
     lv_obj_align(ic, LV_ALIGN_TOP_MID, 0, 22);
 
     lv_obj_t *nm = lv_label_create(card);
     lv_label_set_text(nm, name);
-    lv_obj_set_style_text_font(nm, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(nm, &ui_font_cn_20, 0);
     lv_obj_align(nm, LV_ALIGN_TOP_MID, 0, 78);
 
     lv_obj_t *ds = lv_label_create(card);
@@ -65,13 +66,13 @@ void ui_home_show(void)
 
     /* 顶部标题 + 当前用户 */
     lv_obj_t *title = lv_label_create(lv_screen_active());
-    lv_label_set_text(title, "Smart Term");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+    lv_label_set_text(title, "智能终端系统");
+    lv_obj_set_style_text_font(title, &ui_font_cn_28, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 22);
 
     char ubuf[80];
-    snprintf(ubuf, sizeof(ubuf), "Hi, %s (#%d)", chat_my_name(), chat_my_id());
+    snprintf(ubuf, sizeof(ubuf), "你好，%s (#%d)", chat_my_name(), chat_my_id());
     lv_obj_t *user_lbl = lv_label_create(lv_screen_active());
     lv_label_set_text(user_lbl, ubuf);
     lv_obj_set_style_text_color(user_lbl, lv_color_hex(0xF0C040), 0);
@@ -83,7 +84,7 @@ void ui_home_show(void)
     lv_obj_align(out, LV_ALIGN_TOP_RIGHT, -20, 16);
     lv_obj_set_style_bg_color(out, lv_color_hex(0x7A3B3B), 0);
     lv_obj_t *ol = lv_label_create(out);
-    lv_label_set_text(ol, "LOGOUT");
+    lv_label_set_text(ol, "退出登录");
     lv_obj_center(ol);
     lv_obj_add_event_cb(out, logout_btn_cb, LV_EVENT_CLICKED, NULL);
 
@@ -98,8 +99,8 @@ void ui_home_show(void)
     lv_obj_set_style_border_width(row, 0, 0);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 
-    make_card(row, LV_SYMBOL_EDIT,    "Chat",  "tcp msg",  lv_color_hex(0x2C6E8F), chat_btn_cb);
-    make_card(row, LV_SYMBOL_IMAGE,   "Game",  "pvz fun",  lv_color_hex(0x3D7A3D), game_btn_cb);
-    make_card(row, LV_SYMBOL_SHUFFLE, "2048",  "puzzle",   lv_color_hex(0xB07A2F), game2048_btn_cb);
-    make_card(row, LV_SYMBOL_AUDIO,   "Music", "mplayer",  lv_color_hex(0x8A6D2F), music_btn_cb);
+    make_card(row, LV_SYMBOL_EDIT,    "聊天",  "网络消息", lv_color_hex(0x2C6E8F), chat_btn_cb);
+    make_card(row, LV_SYMBOL_IMAGE,   "游戏",  "塔防",     lv_color_hex(0x3D7A3D), game_btn_cb);
+    make_card(row, LV_SYMBOL_SHUFFLE, "2048",  "数字拼合", lv_color_hex(0xB07A2F), game2048_btn_cb);
+    make_card(row, LV_SYMBOL_AUDIO,   "音乐",  "播放器",   lv_color_hex(0x8A6D2F), music_btn_cb);
 }

@@ -1,4 +1,5 @@
 #include "lvgl/lvgl.h"          
+#include "mysrc/inc/ui_font.h"
 #include "lvgl/src/misc/lv_fs.h"  
 #include <stdio.h>               
 #include <stdlib.h>              
@@ -710,7 +711,7 @@ static void pvz_refresh_wave_bar(void)
     if (!g_wave_bar_label) return;
     /* 最后一波（含僵王）：进度条和文字一起飘红 */
     if (g_wave_index >= TOTAL_WAVES) {
-        lv_label_set_text(g_wave_bar_label, "FINAL");
+        lv_label_set_text(g_wave_bar_label, "最后一波");
         lv_obj_set_style_text_color(g_wave_bar_label, lv_color_hex(0xFF5252), 0);
         /* LV_PART_INDICATOR：进度条的已填充部分 */
         lv_obj_set_style_bg_color(g_wave_bar, lv_color_hex(0xC62828), LV_PART_INDICATOR);
@@ -1608,7 +1609,7 @@ static void pvz_init(void)
 
     g_sun_num_label = lv_label_create(lv_screen_active());
     lv_obj_set_style_text_color(g_sun_num_label, lv_color_hex(0xFFF078), 0);
-    lv_obj_set_style_text_font(g_sun_num_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(g_sun_num_label, &ui_font_cn_20, 0);
     lv_obj_set_size(g_sun_num_label, BANK_W - 16, BANK_H - 16);
     lv_obj_set_style_text_align(g_sun_num_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(g_sun_num_label, "100");
@@ -1665,7 +1666,7 @@ static void pvz_init(void)
     lv_obj_set_pos(g_wave_obj, WAVE_X, WAVE_Y);
     g_wave_num_label = lv_label_create(lv_screen_active());
     lv_obj_set_style_text_color(g_wave_num_label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(g_wave_num_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(g_wave_num_label, &ui_font_cn_28, 0);
     lv_obj_set_size(g_wave_num_label, 60, 36);
     lv_obj_set_style_text_align(g_wave_num_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(g_wave_num_label, "0");
@@ -1684,7 +1685,7 @@ static void pvz_init(void)
     lv_obj_set_style_radius(g_wave_bar, 6, LV_PART_INDICATOR);
 
     g_wave_bar_label = lv_label_create(lv_screen_active());
-    lv_obj_set_style_text_font(g_wave_bar_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(g_wave_bar_label, &ui_font_cn_20, 0);
     lv_obj_set_style_text_color(g_wave_bar_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_align(g_wave_bar_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_size(g_wave_bar_label, 80, 26);

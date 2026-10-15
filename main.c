@@ -9,6 +9,7 @@
 #include "mysrc/inc/game_menu.h"
 #include "mysrc/inc/ui_login.h"
 #include "mysrc/inc/app_music.h"
+#include "mysrc/inc/ui_font.h"      /* 界面中文字体（思源黑体子集，见该头文件） */
 
 
 int main(void)
@@ -28,6 +29,12 @@ int main(void)
     indev->scroll_limit = 25;
 
     srand(time(NULL));
+
+    /* 全局默认字体：挂到根 screen 上，子对象没显式指定字体时自动继承。
+     * 界面（含中文）统一用思源黑体子集字库，见 mysrc/inc/ui_font.h。
+     * 注意：页面切换用的是 lv_obj_clean(screen)（只清子对象），
+     *       screen 自身的样式会保留，所以这里设一次就够。 */
+    lv_obj_set_style_text_font(lv_screen_active(), &ui_font_cn_20, 0);
 
     /* 启动到登录界面（登录成功 -> 主界面 -> 聊天/游戏/音乐） */
     ui_login_show();

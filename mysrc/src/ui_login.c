@@ -3,6 +3,7 @@
  * 网络操作放在 pthread 里做，避免阻塞 LVGL 主线程；结果用 lv_async_call 回主线程。
  */
 #include "lvgl/lvgl.h"
+#include "mysrc/inc/ui_font.h"
 #include "mysrc/inc/ui_login.h"
 #include "mysrc/inc/net_chat.h"
 #include "mysrc/inc/ui_home.h"
@@ -136,12 +137,12 @@ static void start_request(bool is_register)
     req->is_register = is_register;
 
     if (!strlen(req->name)) {
-        lv_label_set_text(status_lbl, "please input username");
+        lv_label_set_text(status_lbl, "请输入用户名");
         free(req);
         return;
     }
     g_busy = true;
-    lv_label_set_text(status_lbl, "connecting...");
+    lv_label_set_text(status_lbl, "连接中...");
 
     pthread_t tid;
     pthread_create(&tid, NULL, login_thread, req);
@@ -169,22 +170,22 @@ void ui_login_show(void)
 
     /* 标题 */
     lv_obj_t *title = lv_label_create(lv_screen_active());
-    lv_label_set_text(title, "Smart Terminal");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_32, 0);
+    lv_label_set_text(title, "智能终端系统");
+    lv_obj_set_style_text_font(title, &ui_font_cn_32, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 8);
 
     lv_obj_t *sub = lv_label_create(lv_screen_active());
     /* 屏幕上可见的版本标记：看到这行说明跑的是新代码 */
-    lv_label_set_text(sub, "Chat | Game | Music    [ BUILD v3 - QWERTY KB ]");
+    lv_label_set_text(sub, "聊天 | 游戏 | 音乐    [ BUILD v3 - QWERTY KB ]");
     lv_obj_set_style_text_color(sub, lv_color_hex(0x55DD88), 0);
     lv_obj_align(sub, LV_ALIGN_TOP_MID, 0, 50);
 
     /* 三行输入框 + 右侧标签（整体上移，给底部 5 行键盘让位） */
     const struct { lv_obj_t **ta; const char *hint; bool is_pass; int y; } rows[] = {
-        { &ip_ta,   "Server", false, 88  },
-        { &name_ta, "User",   false, 150 },
-        { &pass_ta, "Pass",   true,  212 },
+        { &ip_ta,   "服务器", false, 88  },
+        { &name_ta, "用户名", false, 150 },
+        { &pass_ta, "密码",   true,  212 },
     };
     for (int i = 0; i < 3; i++) {
         lv_obj_t *lbl = lv_label_create(lv_screen_active());
@@ -210,7 +211,7 @@ void ui_login_show(void)
     lv_obj_set_pos(login_btn, 360, 276);
     lv_obj_set_style_bg_color(login_btn, lv_color_hex(0x1F6F43), 0);
     lv_obj_t *ll = lv_label_create(login_btn);
-    lv_label_set_text(ll, "LOGIN");
+    lv_label_set_text(ll, "登录");
     lv_obj_center(ll);
     lv_obj_add_event_cb(login_btn, login_btn_cb, LV_EVENT_CLICKED, NULL);
 
@@ -219,7 +220,7 @@ void ui_login_show(void)
     lv_obj_set_pos(reg_btn, 570, 276);
     lv_obj_set_style_bg_color(reg_btn, lv_color_hex(0x39586E), 0);
     lv_obj_t *rl = lv_label_create(reg_btn);
-    lv_label_set_text(rl, "REGISTER");
+    lv_label_set_text(rl, "注册");
     lv_obj_center(rl);
     lv_obj_add_event_cb(reg_btn, reg_btn_cb, LV_EVENT_CLICKED, NULL);
 

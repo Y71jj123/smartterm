@@ -6,6 +6,7 @@
  *   3) 点退出时写 "quit\n" 并 waitpid 回收子进程，避免僵尸进程
  */
 #include "lvgl/lvgl.h"
+#include "mysrc/inc/ui_font.h"
 #include "mysrc/inc/app_music.h"
 #include "mysrc/inc/ui_home.h"
 #include <stdio.h>
@@ -56,6 +57,15 @@ static bool g_touch_armed = false;     /* 本次视频是否已完成"首次读�
 
 static lv_obj_t *song_list;
 static lv_obj_t *now_lbl;              /* 正在播放提示 */
+
+/* 底部控制条：**按钮上显示的文字**与**发给 mplayer 的命令**分两张表存。
+ * 回调从按钮 user_data 拿下标再查命令表 —— 不要再去比对标签文字，
+ * 否则标签一改中文，strcmp("prev") 之类就全部失配、一排按钮集体失灵。 */
+static const char *const k_ctrl_keys[] = { "prev", "play", "next", "rew", "ff",
+                                           "vol+", "vol-", "mute", "stop" };
+static const char *const k_ctrl_text[] = { "上一首", "播放", "下一首", "快退", "快进",
+                                           "音量+", "音量-", "静音", "停止" };
+#define CTRL_BTN_COUNT ((int)(sizeof(k_ctrl_keys) / sizeof(k_ctrl_keys[0])))
 
 /* ================= 播放器控制 ================= */
 /* 往 fifo 写一条 mplayer slave 命令 */
@@ -182,11 +192,17 @@ static void mplayer_stop(void)
         close(g_fifo_fd);
         g_fifo_fd = -1;
     }
+    /* 只有视频才需要复位 framebuffer。
+     * 纯音频走的是 -vo null -novideo，一个字节都没碰过 /dev/fb0；
+     * 这时去 FBIOPUT_VSCREENINFO 改 LVGL 独占的 var info 是多余的，
+     * 万一 LVGL 用了双缓冲还会把显示的页切走（表现为切歌时闪一下）。 */
+    const bool was_video = g_video_active;
     g_video_active = false;
     g_video_start = 0;
     /* 顺序很重要：先把 framebuffer 的参数复位（mplayer 被强杀时它自己没恢复），
      * 再让 LVGL 重绘 —— 否则重绘会被画到"看不见的地方"，屏幕看着还是死的。 */
-    fb_restore();
+    if (was_video)
+        fb_restore();
     lv_obj_invalidate(lv_screen_active());
     lv_refr_now(NULL);
 }
@@ -210,24 +226,47 @@ void music_video_stop(void)
  *   顺便在此非阻塞回收已结束的 mplayer，并在视频播完时恢复界面。 */
 bool music_video_active(void)
 {
-    if (!g_video_active) return false;
-    if (g_player_pid <= 0) { g_video_active = false; return false; }
+    /* ---- 通用收尾（音频 / 视频都走这里）----
+     * 主循环每 5ms 调一次本函数，所以 mplayer 自己退出的那一刻就能被发现。
+     * 以前这段收尾写在"视频"分支里，音频播完根本进不来，于是：
+     *   · mplayer 变成僵尸（没人 waitpid）；
+     *   · g_cur 不重置 —— 再点 play/pause 会往"已经没有读端"的 fifo 写命令，
+     *     静默失效（界面上看着就像按钮坏了）；
+     *   · g_fifo_fd 一直开着，漏 fd。
+     * 现在统一在这里收，音频播完界面会自己回到 "Now: none" 并取消列表高亮。 */
+    if (g_player_pid > 0) {
+        int status = 0;
+        if (waitpid(g_player_pid, &status, WNOHANG) == g_player_pid) {
+            const bool was_video = g_video_active;
+            g_player_pid = -1;
+            g_video_active = false;
+            g_video_start = 0;
+            if (g_fifo_fd >= 0) { close(g_fifo_fd); g_fifo_fd = -1; }
+            g_cur = -1;
 
-    int status = 0;
-    pid_t r = waitpid(g_player_pid, &status, WNOHANG);
-    if (r == g_player_pid) {             /* 视频播完，mplayer 已自行退出 */
-        g_player_pid = -1;
-        g_video_active = false;
-        g_video_start = 0;
-        /* 收尾：关 fifo、复位当前曲目。否则之后点 play/pause 会往无读端的
-         * fifo 写命令，静默失效 */
-        if (g_fifo_fd >= 0) { close(g_fifo_fd); g_fifo_fd = -1; }
-        g_cur = -1;
-        fb_restore();                 /* mplayer 自己退了，但 fb 参数仍可能被它改过 */
-        lv_obj_invalidate(lv_screen_active());
-        lv_refr_now(NULL);
-        return false;
+            /* 复位的兄弟活：清掉"正在播放"提示、取消列表高亮 */
+            if (now_lbl) lv_label_set_text(now_lbl, "当前: 无");
+            if (song_list) {
+                uint32_t n = lv_obj_get_child_count(song_list);
+                for (uint32_t i = 0; i < n; i++)
+                    lv_obj_set_style_bg_color(lv_obj_get_child(song_list, i),
+                                              lv_color_hex(0x24303B), 0);
+            }
+            printf("[MUSIC] player exited -> %s\n", was_video ? "video done" : "audio done");
+            fflush(stdout);
+
+            if (was_video) {
+                fb_restore();          /* mplayer 自己退了，但 fb 参数仍可能被它改过 */
+                lv_obj_invalidate(lv_screen_active());
+                lv_refr_now(NULL);
+            }
+            return false;
+        }
     }
+
+    if (!g_video_active) return false;
+    if (g_player_pid <= 0) { g_video_active = false; return false; }  /* 状态自洽兜底 */
+
     /* 看门狗（最后一道保险）：极端情况下 mplayer 卡死，主循环会一直跳过
      * lv_timer_handler()。正常情况下用户"点屏幕"就能停视频，所以这里给得很宽松。 */
     if (g_video_start && lv_tick_elaps(g_video_start) > VIDEO_WATCHDOG_MS) {
@@ -260,10 +299,10 @@ static void mplayer_play(int idx)
          * 所以先在音乐页上盖一条提示，停 1.2s 让用户看清"怎么退出视频"——
          * 否则用户会以为板子死机了（这正是之前的真实反馈）。 */
         lv_obj_t *hint = lv_label_create(lv_screen_active());
-        lv_label_set_text(hint, LV_SYMBOL_PLAY " Video playing\n\n"
-                                               "Tap anywhere on screen to STOP");
+        lv_label_set_text(hint, LV_SYMBOL_PLAY " 视频播放中\n\n"
+                                               "点击屏幕任意位置停止");
         lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_style_text_font(hint, &lv_font_montserrat_28, 0);
+        lv_obj_set_style_text_font(hint, &ui_font_cn_28, 0);
         lv_obj_set_style_text_color(hint, lv_color_hex(0xFFFFFF), 0);
         lv_obj_set_style_bg_color(hint, lv_color_hex(0x101418), 0);
         lv_obj_set_style_bg_opa(hint, LV_OPA_90, 0);
@@ -315,7 +354,7 @@ static void mplayer_play(int idx)
              * -vo null + -novideo：完全不碰 framebuffer
              * （-novideo 顺带挡掉 mp3 内嵌封面被当视频渲染的情况）。 */
             execlp("mplayer", "mplayer", "-slave", "-quiet",
-                   "-vo", "null", "-novideo",
+                   "-vo", "null", "-novideo", "-loop", "0",
                    "-input", fifoname, g_songs[idx], (char *)NULL);
         }
         _exit(127);                       /* exec 失败才会走到这 */
@@ -331,7 +370,7 @@ static void mplayer_play(int idx)
     char buf[128];
     const char *base = strrchr(g_songs[idx], '/');
     base = base ? base + 1 : g_songs[idx];
-    snprintf(buf, sizeof(buf), "Now: %s", base);
+    snprintf(buf, sizeof(buf), "当前: %s", base);
     lv_label_set_text(now_lbl, buf);
 
     /* 高亮列表当前项 */
@@ -378,8 +417,9 @@ static void song_click_cb(lv_event_t *e)
 static void ctrl_click_cb(lv_event_t *e)
 {
     lv_obj_t *btn = lv_event_get_target(e);
-    lv_obj_t *lbl = lv_obj_get_child(btn, 0);
-    const char *txt = lv_label_get_text(lbl);
+    int idx = (int)(intptr_t)lv_obj_get_user_data(btn);
+    if (idx < 0 || idx >= CTRL_BTN_COUNT) return;
+    const char *txt = k_ctrl_keys[idx];      /* 命令键，与按钮上的中文显示无关 */
     printf("[MUSIC] ctrl clicked: %s\n", txt); fflush(stdout);
 
     if      (!strcmp(txt, "prev"))  mplayer_play(g_cur <= 0 ? g_song_cnt - 1 : g_cur - 1);
@@ -420,7 +460,7 @@ void music_app_open(void)
     lv_obj_clear_flag(top, LV_OBJ_FLAG_SCROLLABLE);                 /* 容器不滚动，避免吞点击 */
 
     lv_obj_t *title = lv_label_create(top);
-    lv_label_set_text(title, "Music Player (mplayer)");
+    lv_label_set_text(title, "音乐播放器");
     lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(title);
 
@@ -428,7 +468,7 @@ void music_app_open(void)
     lv_obj_set_size(back, 90, 38);
     lv_obj_align(back, LV_ALIGN_RIGHT_MID, -8, 0);
     lv_obj_t *bl = lv_label_create(back);
-    lv_label_set_text(bl, "BACK");
+    lv_label_set_text(bl, "返回");
     lv_obj_center(bl);
     lv_obj_add_event_cb(back, back_cb, LV_EVENT_CLICKED, NULL);
 
@@ -440,7 +480,7 @@ void music_app_open(void)
 
     /* 右侧"正在播放" */
     now_lbl = lv_label_create(lv_screen_active());
-    lv_label_set_text(now_lbl, "Now: none");
+    lv_label_set_text(now_lbl, "当前: 无");
     lv_obj_set_style_text_color(now_lbl, lv_color_hex(0xF0C040), 0);
     lv_obj_set_pos(now_lbl, 360, 90);
 
@@ -456,21 +496,20 @@ void music_app_open(void)
     lv_obj_set_flex_align(ctrl_bar, LV_FLEX_ALIGN_SPACE_EVENLY,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    const char *btn_text[] = { "prev", "play", "next", "rew", "ff",
-                               "vol+", "vol-", "mute", "stop" };
-    for (int i = 0; i < (int)(sizeof(btn_text) / sizeof(btn_text[0])); i++) {
+    for (int i = 0; i < CTRL_BTN_COUNT; i++) {
         lv_obj_t *btn = lv_btn_create(ctrl_bar);
         lv_obj_set_size(btn, 86, 46);
         lv_obj_t *lbl = lv_label_create(btn);
-        lv_label_set_text(lbl, btn_text[i]);
+        lv_label_set_text(lbl, k_ctrl_text[i]);
         lv_obj_center(lbl);
+        lv_obj_set_user_data(btn, (void *)(intptr_t)i);
         lv_obj_add_event_cb(btn, ctrl_click_cb, LV_EVENT_CLICKED, NULL);
     }
 
     /* 扫描歌曲并填充列表 */
     scan_songs();
     if (g_song_cnt == 0) {
-        lv_obj_t *btn = lv_list_add_btn(song_list, LV_SYMBOL_WARNING, "no mp3 found");
+        lv_obj_t *btn = lv_list_add_btn(song_list, LV_SYMBOL_WARNING, "未找到音频文件");
         lv_obj_set_user_data(btn, (void *)(intptr_t)-1);
     }
     for (int i = 0; i < g_song_cnt; i++) {

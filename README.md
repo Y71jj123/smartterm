@@ -25,6 +25,7 @@
 | **植物大战僵尸** | 高 | 数据驱动横版塔防，对象池管理僵尸/植物，30ms 定时器驱动，5 波递增 + 僵尸王 |
 | **2048** | 中高 | 4×4 棋盘，触摸滑动手势控制方向，纯 LVGL 控件绘制（零图片素材），分数/最高分/胜负遮罩 |
 | **音乐 / 视频** | 高 | fork + mplayer -slave + FIFO 控制，自动扫描 `/jing/music` 与 U 盘；播放时让 LVGL 暂停刷新以释放 framebuffer |
+| **全中文界面** | 中 | 7 档中文字库（思源黑体子集，只收界面用到的字 + ASCII，约 2.6MB 源码）；默认字体挂在根 screen 上由子对象继承 |
 
 ## 技术栈
 
@@ -37,6 +38,7 @@
 | 网络通信 | TCP Socket、cJSON 协议封装、pthread 多线程并发 |
 | 进程与并发 | fork 创建子进程、waitpid 回收、命名管道（FIFO）进程间通信 |
 | 多媒体 | mplayer（`-slave` 从模式 + FIFO 命令控制） |
+| 界面字体 | 思源黑体（Noto Sans SC）子集，由 `lv_font_conv` 生成 7 档字库（14~48px） |
 | 构建与部署 | CMake、aarch64-linux-gnu-gcc 交叉编译、板端直接运行 |
 
 ## 系统架构
@@ -83,10 +85,10 @@ smartterm/
 ├── lv_conf.h               # LVGL 配置（含 A: 盘符映射板子根 /）
 ├── mouse_cursor_icon.c     # 鼠标光标图标
 ├── mysrc/
-│   ├── inc/                # 模块头文件（ui_login/ui_home/net_chat/game_pvz/game_2048/app_music/game_menu/cJSON）
-│   └── src/                # 对应实现 + cJSON.c
+│   ├── inc/                # 模块头文件（ui_login/ui_home/net_chat/game_pvz/game_2048/app_music/game_menu/ui_font/cJSON）
+│   └── src/                # 对应实现 + cJSON.c + ui_font_cn_*.c（中文字库 7 档）
 ├── server/                 # 聊天服务器（chat_server.c + cJSON + Makefile）
-├── tools/                  # Python 资源生成/校验（gen_pvz_res.py 等）
+├── tools/                  # Python 资源生成/校验（gen_pvz_res.py、gen_cn_font.py 生成中文字库等）
 ├── lvgl/                   # LVGL 9 源码（add_subdirectory 编入）
 ├── pvzBMP/                 # 38 张 PVZ BMP 美术资源（板端 /jing/pvzBMP）
 ├── docs/screenshots/       # 运行预览图

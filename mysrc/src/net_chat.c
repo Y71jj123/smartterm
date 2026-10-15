@@ -5,6 +5,7 @@
  *      LVGL 主线程执行（LVGL 对象不允许跨线程直接操作）
  */
 #include "lvgl/lvgl.h"
+#include "mysrc/inc/ui_font.h"
 #include "mysrc/inc/net_chat.h"
 #include "mysrc/inc/ui_home.h"
 #include "mysrc/inc/ui_kb.h"
@@ -118,7 +119,7 @@ static void append_msg_line(const char *line, uint32_t color)
     lv_obj_set_width(lbl, lv_pct(96));
     lv_label_set_text(lbl, line);
     lv_obj_set_style_text_color(lbl, lv_color_hex(color), 0);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(lbl, &ui_font_cn_16, 0);
     lv_obj_scroll_to_y(msg_area, LV_COORD_MAX, LV_ANIM_OFF);  /* 滚到最底 */
 }
 
@@ -132,7 +133,7 @@ static void async_show_msg(void *p)
     if (m->is_group)
         snprintf(buf, sizeof(buf), "[%s]: %s", m->sender_name, m->text);
     else
-        snprintf(buf, sizeof(buf), "[PM from %s]: %s", m->sender_name, m->text);
+        snprintf(buf, sizeof(buf), "[私聊 %s]: %s", m->sender_name, m->text);
     append_msg_line(buf, m->is_group ? 0x2A6099 : 0x992A60);
     free(m);
 }
@@ -157,7 +158,7 @@ static void async_refresh_users(void *p) /* p = cJSON 在线列表字符串 */
     if (arr && cJSON_IsArray(arr)) {
         int n = cJSON_GetArraySize(arr);
         char buf[64];
-        snprintf(buf, sizeof(buf), "Online: %d", n);
+        snprintf(buf, sizeof(buf), "在线: %d", n);
         lv_obj_t *t = lv_list_add_btn(user_list, LV_SYMBOL_REFRESH, buf);
         lv_obj_set_user_data(t, (void *)(intptr_t)-1);
         lv_obj_add_event_cb(t, user_click_cb, LV_EVENT_CLICKED, NULL);  /* 点标题 = 刷新 */
@@ -220,7 +221,7 @@ static void *net_thread(void *arg)
         else if (!strcmp(status, "error")) {
             chat_msg_t *m = calloc(1, sizeof(chat_msg_t));
             m->is_system = true;
-            snprintf(m->text, sizeof(m->text), "server error: %s", msg);
+            snprintf(m->text, sizeof(m->text), "服务器错误: %s", msg);
             lv_async_call(async_show_msg, m);
         }
         cJSON_Delete(root);
@@ -272,7 +273,7 @@ static void send_pm_cb(lv_event_t *e)
     cJSON_Delete(root);
 
     char buf[600];
-    snprintf(buf, sizeof(buf), "[me -> %s]: %s", g_target_name, txt);
+    snprintf(buf, sizeof(buf), "[我 -> %s]: %s", g_target_name, txt);
     append_msg_line(buf, 0x336633);
     lv_textarea_set_text(input_ta, "");
 }
@@ -317,7 +318,7 @@ void chat_app_open(void)
     lv_obj_set_style_radius(top, 0, 0);
 
     title_lbl = lv_label_create(top);
-    lv_label_set_text_fmt(title_lbl, "Chat   [my id=%d name=%s]", g_my_id, g_my_name);
+    lv_label_set_text_fmt(title_lbl, "聊天   [我的ID=%d 名字=%s]", g_my_id, g_my_name);
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(0xFFFFFF), 0);
     lv_obj_center(title_lbl);
 
@@ -325,7 +326,7 @@ void chat_app_open(void)
     lv_obj_set_size(back, 90, 38);
     lv_obj_align(back, LV_ALIGN_RIGHT_MID, -8, 0);
     lv_obj_t *bl = lv_label_create(back);
-    lv_label_set_text(bl, "BACK");
+    lv_label_set_text(bl, "返回");
     lv_obj_center(bl);
     lv_obj_add_event_cb(back, back_cb, LV_EVENT_CLICKED, NULL);
 
@@ -335,7 +336,7 @@ void chat_app_open(void)
     lv_obj_set_pos(user_list, 10, 62);
 
     target_lbl = lv_label_create(lv_screen_active());
-    lv_label_set_text(target_lbl, "PM target: none");
+    lv_label_set_text(target_lbl, "私聊对象: 无");
     lv_obj_set_style_text_color(target_lbl, lv_color_hex(0xF0E68C), 0);
     lv_obj_set_pos(target_lbl, 10, 296);
 
@@ -359,7 +360,7 @@ void chat_app_open(void)
     lv_obj_set_size(pm_btn, 90, 50);
     lv_obj_set_pos(pm_btn, 910, 316);
     lv_obj_t *pl = lv_label_create(pm_btn);
-    lv_label_set_text(pl, "PM");
+    lv_label_set_text(pl, "私聊");
     lv_obj_center(pl);
     lv_obj_add_event_cb(pm_btn, send_pm_cb, LV_EVENT_CLICKED, NULL);
 
@@ -368,7 +369,7 @@ void chat_app_open(void)
     lv_obj_set_pos(gr_btn, 10, 316);
     lv_obj_set_style_bg_color(gr_btn, lv_color_hex(0x1F6F43), 0);
     lv_obj_t *gl = lv_label_create(gr_btn);
-    lv_label_set_text(gl, "GROUP SEND");
+    lv_label_set_text(gl, "群发");
     lv_obj_center(gl);
     lv_obj_add_event_cb(gr_btn, send_group_cb, LV_EVENT_CLICKED, NULL);
 

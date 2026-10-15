@@ -10,6 +10,7 @@
  * 退出逻辑与 game_pvz.c 保持一致：lv_obj_clean 当前屏幕 + 调 ui_home_show()。
  */
 #include "lvgl/lvgl.h"
+#include "mysrc/inc/ui_font.h"
 #include "mysrc/inc/game_2048.h"
 
 #include <stdio.h>
@@ -68,9 +69,9 @@ static void tile_colors(int v, lv_color_t *bg, lv_color_t *fg)
 /* 依据数字位数选字号，避免四位数字溢出方块 */
 static const lv_font_t *tile_font(int v)
 {
-    if (v >= 1000) return &lv_font_montserrat_28;
-    if (v >= 100)  return &lv_font_montserrat_32;
-    return &lv_font_montserrat_36;
+    if (v >= 1000) return &ui_font_cn_28;
+    if (v >= 100)  return &ui_font_cn_32;
+    return &ui_font_cn_36;
 }
 
 /* ----------------------------------------------------------------------
@@ -192,7 +193,7 @@ static void refresh_board(void)
         }
     }
     if (g_score > g_best) g_best = g_score;
-    lv_label_set_text_fmt(g_score_lbl, "SCORE: %d    BEST: %d", g_score, g_best);
+    lv_label_set_text_fmt(g_score_lbl, "得分: %d    最高: %d", g_score, g_best);
 }
 
 /* 游戏结束 / 胜利遮罩 */
@@ -208,7 +209,7 @@ static void show_overlay(const char *title)
 
     lv_obj_t *t = lv_label_create(g_overlay);
     lv_label_set_text(t, title);
-    lv_obj_set_style_text_font(t, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(t, &ui_font_cn_48, 0);
     lv_obj_set_style_text_color(t, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(t, LV_ALIGN_CENTER, 0, -40);
 
@@ -217,8 +218,8 @@ static void show_overlay(const char *title)
     lv_obj_align(btn, LV_ALIGN_CENTER, 0, 60);
     lv_obj_set_style_bg_color(btn, lv_color_hex(0x3D7A3D), 0);
     lv_obj_t *bl = lv_label_create(btn);
-    lv_label_set_text(bl, "RESTART");
-    lv_obj_set_style_text_font(bl, &lv_font_montserrat_28, 0);
+    lv_label_set_text(bl, "重新开始");
+    lv_obj_set_style_text_font(bl, &ui_font_cn_28, 0);
     lv_obj_center(bl);
     lv_obj_add_event_cb(btn, restart_cb, LV_EVENT_CLICKED, NULL);
 }
@@ -331,13 +332,13 @@ void game_2048(void)
     /* 标题 + 分数 */
     lv_obj_t *title = lv_label_create(lv_screen_active());
     lv_label_set_text(title, "2048");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(title, &ui_font_cn_48, 0);
     lv_obj_set_style_text_color(title, lv_color_hex(0xEDC22E), 0);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 28, 14);
 
     g_score_lbl = lv_label_create(lv_screen_active());
-    lv_label_set_text(g_score_lbl, "SCORE: 0    BEST: 0");
-    lv_obj_set_style_text_font(g_score_lbl, &lv_font_montserrat_20, 0);
+    lv_label_set_text(g_score_lbl, "得分: 0    最高: 0");
+    lv_obj_set_style_text_font(g_score_lbl, &ui_font_cn_20, 0);
     lv_obj_set_style_text_color(g_score_lbl, lv_color_hex(0xCCCCCC), 0);
     lv_obj_align(g_score_lbl, LV_ALIGN_TOP_MID, 0, 40);
 
@@ -347,8 +348,8 @@ void game_2048(void)
     lv_obj_align(back, LV_ALIGN_TOP_RIGHT, -24, 16);
     lv_obj_set_style_bg_color(back, lv_color_hex(0x7A3B3B), 0);
     lv_obj_t *bl = lv_label_create(back);
-    lv_label_set_text(bl, "BACK");
-    lv_obj_set_style_text_font(bl, &lv_font_montserrat_20, 0);
+    lv_label_set_text(bl, "返回");
+    lv_obj_set_style_text_font(bl, &ui_font_cn_20, 0);
     lv_obj_center(bl);
     lv_obj_add_event_cb(back, back_cb, LV_EVENT_CLICKED, NULL);
 
@@ -387,7 +388,7 @@ void game_2048(void)
             lv_obj_clear_flag(cell_obj, LV_OBJ_FLAG_CLICKABLE);    /* 格子不抢手势，交给 board 统一处理 */
 
             lv_obj_t *lab = lv_label_create(cell_obj);
-            lv_obj_set_style_text_font(lab, &lv_font_montserrat_36, 0);
+            lv_obj_set_style_text_font(lab, &ui_font_cn_36, 0);
             lv_obj_center(lab);
 
             g_tiles[i][j]  = cell_obj;

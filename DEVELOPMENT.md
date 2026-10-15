@@ -48,11 +48,17 @@
 12. **mplayer 依赖**：板端需 `which mplayer`；没装则音乐/视频不可用。
 13. **LVGL 滚动标志会吞掉点击/滑动 ⭐**：`lv_obj_create()` 的容器**默认带 `LV_OBJ_FLAG_SCROLLABLE`**；手指一滑 LVGL 就当成"滚动该容器"并抢走 press（`PRESS_LOST`），导致手势回调收不到、`CLICKED` 不触发（按钮全失灵）。→ 不可滚动的容器/棋盘/整屏统一 `lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE)`；触摸容错 `indev->scroll_limit = 25`（默认仅 10，见 `main.c`，本版 LVGL 无公开 setter，需 include `lvgl/src/indev/lv_indev_private.h`）。
 14. **`waitpid` 无限阻塞会冻结整个 UI ⭐**：`mplayer_stop()` 里 `waitpid(pid,NULL,0)` 一旦 mplayer 不响应就永久卡死主线程，表现为"所有按钮点不动只能 Ctrl+C"。→ 一律**非阻塞轮询 + 超时 SIGKILL 兜底**，回收子进程绝不能阻塞 UI 线程。
+15. **中文字库是子集，新写了汉字必须重生成 ⭐**：`mysrc/src/ui_font_cn_*.c` 只包含"字符串字面量里出现过的字 + ASCII"，
+    界面上新用一个没收录的汉字、又没重跑 `tools/gen_cn_font.py`，那个字会显示成**方块**（不报错、不崩溃，很难查）。
+    另外默认字体挂在根 screen 上（`main.c`），页面切换用 `lv_obj_clean()` 只清子对象、不会清掉它，所以设一次就够；
+    若哪天改成换 screen（`lv_obj_create(NULL)`），记得在新 screen 上重设字体，否则中文全变方块。
 
 ## 模块速查
 - `ui_login.c` 登录（IP/用户/密码 + 键盘常显）
 - `ui_home.c` 主页四卡片（Chat/Game/2048/Music）
 - `ui_kb.c` / `ui_kb.h` **触摸键盘统一布局**：PC 式 QWERTY + 常驻数字行，登录页/聊天页共用 `smart_kb_apply()`
+- `ui_font.h` / `ui_font_cn_*.c` **界面中文字库**：思源黑体子集（14~48px 共 7 档），只含界面实际用到的字；
+  界面文字改动后重跑 `python tools/gen_cn_font.py` 重新生成
 - `net_chat.c` 聊天（封包 + 收包线程 + `lv_async_call`）
 - `app_music.c` 音乐/视频（扫描 + fork/mplayer/fifo + 看门狗 + 点屏停播 + `fb_restore`）
 - `game_pvz.c` 植物大战僵尸（对象池 + 波次）
