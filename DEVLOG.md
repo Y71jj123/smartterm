@@ -1,7 +1,6 @@
-# DEVLOG — SmartTerm 开发日志 & 
+# DEVLOG — SmartTerm 开发日志
 
-> 这份文件给 **VSCode 里的  / 其他 **当上下文用。
-> 打开本项目的  会自动读根目录 `DEVELOPMENT.md`；需要更细的历史就来读这份。
+> 开发过程、调试纪要与待验证清单；遇到问题先翻这里。
 >
 > 最后更新：2026-10-15
 
@@ -25,7 +24,7 @@
 | --- | --- |
 | 五大模块代码 | ✅ 已全部集成、语法自检通过 |
 | GitHub 仓库 | ✅ **已同步**（本机 `git push` 成功，`baff070..2b01309 main -> main`，2026-10-15 14:09） |
-| Obsidian 笔记 | ✅ `smartterm/` 9 篇（概览 / 技术栈 / 踩坑 / 踩坑记录） |
+| Obsidian 笔记 | ✅ `smartterm/` 9 篇（概览 / 技术栈 / 踩坑记录） |
 | **板端实测** | ✅ **首轮已完成**（RK3568 到手）；§3 两处修复已实现并提交 `41a342f`，**待二次上板复验** |
 | 2048 滑动 / music 按钮 bug | ✅ 已修复并提交 `5c0ae0d`（见 §2） |
 
@@ -62,7 +61,7 @@
 | `mysrc/src/app_music.c` | 入口 / `top` / `ctrl_bar` 清 `SCROLLABLE`；`mplayer_stop()` 改 **300ms 轮询 + SIGKILL 兜底**（SIGKILL 后也有界回收，绝不再无限阻塞）；视频**自然播完**时补关 fifo + 复位当前曲目；新增**视频看门狗** `VIDEO_MAX_MS=10min`（防 mplayer 卡死冻屏）；关键回调加 `[MUSIC] ...` 日志 |
 | `mysrc/src/ui_home.c` | 入口清 screen `SCROLLABLE`；卡片清 `SCROLLABLE` |
 
-### 2.4 独立复核结论（只读 review）
+### 2.4 独立复核结论
 - **2048 修复判定为正确**；
 - **music 原修复只覆盖一半**，据此补充了 3 点：① `mplayer_stop` 里 SIGKILL 后仍阻塞 `waitpid` → 改有界轮询；
   ② 视频自然播完未收尾 fifo / 未复位当前曲目 → 已补；③ 新增视频看门狗；

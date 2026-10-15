@@ -1,5 +1,5 @@
 /* app_music.c - 音乐播放模块
- * 原理（）：
+ * 原理：
  *   1) fork 出子进程，execlp 启动 mplayer -slave 播放歌曲
  *   2) 创建"有名管道(fifo)"，父进程往里写命令（pause/seek/volume/quit...）
  *      mplayer -slave 会把 fifo 当成命令输入，实现控制

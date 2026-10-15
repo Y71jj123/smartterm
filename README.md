@@ -93,7 +93,7 @@ smartterm/
 ├── README_上板部署.md       # 上板全流程（编译/传板/资源布局/关出厂demo/运行/排错）
 ├── README_PVZ.md           # 植物大战僵尸模块设计文档
 ├── .gitignore
-├── DEVELOPMENT.md               # 已知坑与防坑手册（上下文）
+├── DEVELOPMENT.md          # 开发约定与已知坑
 ├── ROADMAP.md              # 迭代计划
 └── LICENSE                 # MIT
 ```
