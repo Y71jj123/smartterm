@@ -7,7 +7,7 @@
 - 五大模块（登录鉴权 / 网络聊天 / PVZ / 2048 / 音乐视频）代码已集成。
 - ✅ **已上板实测**（RK3568 到手）。首轮实测暴露两个问题并已修复：MP4 播放后 UI 假死、键盘布局不顺手，
   详见 `docs/worklog/2026-10-13.md`。**改动尚未上板复验**。
-- 历史：修复「2048 滑不动 + music 按钮点不动」两个 bug，见 `DEVLOG.md §2`（已提交 `5c0ae0d`）。
+- 历史：修复「2048 滑不动 + music 按钮点不动」两个 bug，见 `DEVLOG.md §2`（已提交 `92ca0ba`）。
 
 ## 环境
 - 唯一正本：`C:\Users\yanji\Desktop\yan\smartterm`（VMware 共享 `yan` → `Desktop\yan`，VM 内 `/mnt/hgfs/yan/smartterm`）。**改代码只改这一份**，否则编不到。
